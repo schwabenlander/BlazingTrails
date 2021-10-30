@@ -1,7 +1,7 @@
 ﻿@page "/search/{SearchQuery}"
-@page "/search/{SearchQuery}/maxlength/{MaxLength:int}"
 @inject HttpClient Http
 @inject NavigationManager NavManager
+@implements IDisposable
 
 <nav aria-label="breadcrumb">
 	<ol class="breadcrumb">
@@ -29,13 +29,11 @@ else
 }
 
 @code {
-	private IEnumerable<Trail>? _searchResults;
+	private IEnumerable<Trail> _searchResults;
+	private IEnumerable<Trail> _cachedSearchResults;
 	private Trail? _selectedTrail;
 
 	[Parameter] public string SearchQuery { get; set; }
-	[Parameter] public int? MaxLength { get; set; }
-
-
 
 	protected override async Task OnInitializedAsync()
 	{
@@ -43,7 +41,9 @@ else
 		{
 			var allTrails = await Http.GetFromJsonAsync<IEnumerable<Trail>>("trails/trail-data.json");
 			_searchResults = allTrails.Where(_ => _.Name.Contains(SearchQuery, StringComparison.CurrentCultureIgnoreCase) || 
-											    _.Location.Contains(SearchQuery, StringComparison.CurrentCultureIgnoreCase));
+												_.Location.Contains(SearchQuery, StringComparison.CurrentCultureIgnoreCase));
+			_cachedSearchResults = _searchResults;
+			NavManager.LocationChanged += HandleLocationChanged;
 		}
 		catch (Exception ex)
 		{
@@ -51,5 +51,46 @@ else
 		}
 	}
 
+	protected override void OnParametersSet()
+	{
+		UpdateFilters();
+	}
+
+	private void HandleLocationChanged(object sender, LocationChangedEventArgs args) => 
+		UpdateFilters();
+
+	protected void UpdateFilters()
+	{
+		var filters = new List<Func<Trail, bool>>();
+		NavManager.TryGetQueryString<int>("maxlength", out var maxLength);
+		NavManager.TryGetQueryString<int>("maxtime", out var maxTime);
+
+		if (maxLength > 0)
+		{
+			filters.Add(_ => _.Length <= maxLength);
+		}
+
+		if (maxTime > 0)
+		{
+			filters.Add(_ => _.TimeInMinutes <= (maxTime * 60));
+		}
+
+		if (filters.Any())
+		{
+			_searchResults = _cachedSearchResults.Where(trail => filters.All(filter => filter(trail)));
+		}
+		else
+		{
+			_searchResults = _cachedSearchResults;
+		}
+
+		StateHasChanged();
+	}
+
 	private void HandleTrailSelected(Trail trail) => _selectedTrail = trail;
+
+	public void Dispose()
+	{
+		NavManager.LocationChanged -= HandleLocationChanged;
+	}
 }
