@@ -1,9 +1,15 @@
+using BlazingTrails.Api.Persistence;
+using Microsoft.EntityFrameworkCore;
+//using Microsoft.Extensions.FileProviders;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
 builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+builder.Services.AddDbContext<BlazingTrailsContext>(options => 
+    options.UseSqlServer(builder.Configuration.GetConnectionString("BlazingTrailsContext")));
+
 builder.Services.AddEndpointsApiExplorer();
 
 var app = builder.Build();
@@ -17,7 +23,12 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 app.UseBlazorFrameworkFiles();
-app.UseStaticFiles(); 
+app.UseStaticFiles();
+//app.UseStaticFiles(new StaticFileOptions()
+//{
+//    FileProvider = new PhysicalFileProvider(Path.Combine(Directory.GetCurrentDirectory(), @"Images")),
+//    RequestPath = new Microsoft.AspNetCore.Http.PathString("/Images")
+//});
 
 app.UseRouting();
 
