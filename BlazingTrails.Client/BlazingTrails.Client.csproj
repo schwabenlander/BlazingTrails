@@ -21,6 +21,7 @@
 
   <ItemGroup>
     <Watch Include="**/*.scss" />
+    <Watch Remove="Features\ManageTrails\FormSection.razor.scss" />
     <None Update="**/*.css" Watch="false" />
   </ItemGroup>
 
